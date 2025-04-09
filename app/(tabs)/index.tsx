@@ -1,53 +1,40 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Text, View, StyleSheet, Button } from 'react-native';
-import { Camera, CameraType } from 'expo-camera';
-import { BarCodeScanningResult } from 'expo-camera/build/Camera.types';
+import { CameraView, useCameraPermissions } from 'expo-camera'; // Importa CameraView en lugar de Camera
+import { useState } from 'react';
+import { Button, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-export default function HomeScreen() {
-  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
-  const [scanned, setScanned] = useState(false);
-  const [qrData, setQrData] = useState('');
-  const cameraRef = useRef<Camera | null>(null);
+export default function App() {
+  const [facing, setFacing] = useState<'back' | 'front'>('back');  // Usamos 'back' y 'front' para cambiar la cámara
+  const [permission, requestPermission] = useCameraPermissions();  // Se solicita permiso de cámara
 
-  useEffect(() => {
-    (async () => {
-      const { status } = await Camera.requestCameraPermissionsAsync();
-      setHasPermission(status === 'granted');
-    })();
-  }, []);
-
-  const handleBarCodeScanned = (result: BarCodeScanningResult) => {
-    if (!scanned) {
-      setScanned(true);
-      setQrData(result.data);
-      alert(`Código escaneado: ${result.data}`);
-    }
-  };
-
-  if (hasPermission === null) {
-    return <Text>Solicitando permiso de cámara...</Text>;
+  if (!permission) {
+    // Si aún estamos solicitando permisos de cámara
+    return <View />;
   }
-  if (hasPermission === false) {
-    return <Text>No se otorgó permiso para usar la cámara</Text>;
+
+  if (!permission.granted) {
+    // Si no se ha otorgado el permiso
+    return (
+      <View style={styles.container}>
+        <Text style={styles.message}>Necesitamos tu permiso para mostrar la cámara</Text>
+        <Button onPress={requestPermission} title="Dar permiso" />
+      </View>
+    );
+  }
+
+  // Función para cambiar la cámara (delante o atrás)
+  function toggleCameraFacing() {
+    setFacing(current => (current === 'back' ? 'front' : 'back'));
   }
 
   return (
     <View style={styles.container}>
-      <Camera
-        style={StyleSheet.absoluteFillObject}
-        type={CameraType.back}
-        onBarCodeScanned={handleBarCodeScanned}
-        barCodeScannerSettings={{
-          barCodeTypes: ['qr', 'ean13', 'ean8', 'code39', 'code128'],
-        }}
-        ref={cameraRef}
-      />
-      {scanned && (
-        <View style={styles.overlay}>
-          <Text style={styles.text}>Código: {qrData}</Text>
-          <Button title={'Escanear de nuevo'} onPress={() => setScanned(false)} />
+      <CameraView style={styles.camera} facing={facing}>
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity style={styles.button} onPress={toggleCameraFacing}>
+            <Text style={styles.text}>Voltear cámara</Text>
+          </TouchableOpacity>
         </View>
-      )}
+      </CameraView>
     </View>
   );
 }
@@ -55,19 +42,29 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    justifyContent: 'center',
   },
-  overlay: {
-    position: 'absolute',
-    bottom: 100,
-    left: 20,
-    right: 20,
-    backgroundColor: '#000000aa',
-    padding: 20,
-    borderRadius: 10,
+  message: {
+    textAlign: 'center',
+    paddingBottom: 10,
+  },
+  camera: {
+    flex: 1,
+  },
+  buttonContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    backgroundColor: 'transparent',
+    margin: 64,
+  },
+  button: {
+    flex: 1,
+    alignSelf: 'flex-end',
+    alignItems: 'center',
   },
   text: {
+    fontSize: 24,
+    fontWeight: 'bold',
     color: 'white',
-    marginBottom: 10,
-    fontSize: 16,
   },
 });
