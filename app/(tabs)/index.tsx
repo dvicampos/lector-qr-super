@@ -1,74 +1,73 @@
-import { Image, StyleSheet, Platform } from 'react-native';
-
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
+import React, { useState, useEffect, useRef } from 'react';
+import { Text, View, StyleSheet, Button } from 'react-native';
+import { Camera, CameraType } from 'expo-camera';
+import { BarCodeScanningResult } from 'expo-camera/build/Camera.types';
 
 export default function HomeScreen() {
+  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+  const [scanned, setScanned] = useState(false);
+  const [qrData, setQrData] = useState('');
+  const cameraRef = useRef<Camera | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      const { status } = await Camera.requestCameraPermissionsAsync();
+      setHasPermission(status === 'granted');
+    })();
+  }, []);
+
+  const handleBarCodeScanned = (result: BarCodeScanningResult) => {
+    if (!scanned) {
+      setScanned(true);
+      setQrData(result.data);
+      alert(`Código escaneado: ${result.data}`);
+    }
+  };
+
+  if (hasPermission === null) {
+    return <Text>Solicitando permiso de cámara...</Text>;
+  }
+  if (hasPermission === false) {
+    return <Text>No se otorgó permiso para usar la cámara</Text>;
+  }
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12'
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          Tap the Explore tab to learn more about what's included in this starter app.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          When you're ready, run{' '}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+    <View style={styles.container}>
+      <Camera
+        style={StyleSheet.absoluteFillObject}
+        type={CameraType.back}
+        onBarCodeScanned={handleBarCodeScanned}
+        barCodeScannerSettings={{
+          barCodeTypes: ['qr', 'ean13', 'ean8', 'code39', 'code128'],
+        }}
+        ref={cameraRef}
+      />
+      {scanned && (
+        <View style={styles.overlay}>
+          <Text style={styles.text}>Código: {qrData}</Text>
+          <Button title={'Escanear de nuevo'} onPress={() => setScanned(false)} />
+        </View>
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  container: {
+    flex: 1,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
+  overlay: {
     position: 'absolute',
+    bottom: 100,
+    left: 20,
+    right: 20,
+    backgroundColor: '#000000aa',
+    padding: 20,
+    borderRadius: 10,
+  },
+  text: {
+    color: 'white',
+    marginBottom: 10,
+    fontSize: 16,
   },
 });
