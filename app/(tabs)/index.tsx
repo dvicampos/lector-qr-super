@@ -1,6 +1,7 @@
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useState } from 'react';
 import { Button, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { format } from 'date-fns';
 
 export default function App() {
   const [facing, setFacing] = useState<'back' | 'front'>('back');
@@ -22,13 +23,71 @@ export default function App() {
     setFacing((current) => (current === 'back' ? 'front' : 'back'));
   };
 
-  const handleBarCodeScanned = ({ data }: { data: string }) => {
+  const handleBarCodeScanned = async ({ data }: { data: string }) => {
     if (!scanned) {
       setScanned(true);
       setQrData(data);
+  
       alert(`Código escaneado: ${data}`);
+  
+      try {
+        const parsedData = JSON.parse(data); // Se asegura que los datos están en formato JSON
+        console.log(`${parsedData.fecha} ${parsedData.hora}`)
+        // Modificamos el objeto para que coincida con los campos de Django
+        const formattedData = {
+          nombre_persona: parsedData.nombre,
+          apellidos: parsedData.apellidos,
+          cai: parsedData.cai,
+          fecha_hora: `${parsedData.fecha} ${parsedData.hora}`, // Combinamos la fecha y la hora
+        };
+  
+        const response = await fetch('http://192.168.0.8:8000/api/asistencias/registrar/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(formattedData),
+        });
+  
+        const result = await response.json();
+        if (result.message) {
+          alert(result.message); // Mensaje de éxito o error
+        } else {
+          alert('No se pudo registrar la asistencia.');
+        }
+      } catch (error) {
+        console.error('Error al registrar asistencia:', error);
+        alert('Error al registrar asistencia');
+      }
     }
   };
+  
+  // const handleBarCodeScanned = async ({ data }: { data: string }) => {
+  //   if (!scanned) {
+  //     setScanned(true);
+  //     setQrData(data);
+
+  //     alert(`Código escaneado: ${data}`);
+
+  //     try {
+  //       const parsedData = JSON.parse(data); // Se asegura que los datos están en formato JSON
+
+  //       const response = await fetch('http://192.168.0.8:8000/api/asistencias/registrar/', {
+  //         method: 'POST',
+  //         headers: { 'Content-Type': 'application/json' },
+  //         body: JSON.stringify(parsedData),
+  //       });
+
+  //       const result = await response.json();
+  //       if (result.message) {
+  //         alert(result.message); // Mensaje de éxito o error
+  //       } else {
+  //         alert('No se pudo registrar la asistencia.');
+  //       }
+  //     } catch (error) {
+  //       console.error('Error al registrar asistencia:', error);
+  //       alert('Error al registrar asistencia');
+  //     }
+  //   }
+  // };
 
   return (
     <View style={styles.container}>
